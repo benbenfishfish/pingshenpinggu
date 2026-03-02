@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>智能评审系统 · 资料查询与添加</title>
+  <style>
+    :root { --bg:#0f1216; --panel:#161a21; --soft:#1c212a; --text:#e6e8eb; --muted:#9aa3ad; --brand:#ff7f2a; --accent:#3b82f6; --ok:#22c55e; --danger:#ef4444; }
+    * { box-sizing:border-box; }
+    html,body { height:100%; }
+    body { margin:0; background:linear-gradient(180deg,#0e1114,#11151a); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,PingFang SC,Microsoft YaHei,sans-serif; }
+    .app { max-width:1120px; margin:0 auto; padding:24px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px; }
+    .title { font-size:20px; font-weight:600; letter-spacing:.2px; }
+    .badge { display:inline-flex; align-items:center; gap:8px; background:var(--soft); border:1px solid #242a33; color:var(--muted); padding:8px 12px; border-radius:10px; font-size:12px; }
+    .tabs { display:flex; gap:8px; margin:10px 0 18px; }
+    .tab { appearance:none; border:1px solid #263042; background:var(--panel); color:var(--text); padding:10px 14px; border-radius:10px; font-size:14px; cursor:pointer; transition:.2s; }
+    .tab:hover { border-color:#344055; }
+    .tab.active { border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in oklab,var(--accent) 30%, transparent); }
+    .tab.ai { border-color:color-mix(in oklab,var(--brand) 35%, #263042); color:#fff; background:linear-gradient(180deg,color-mix(in oklab,var(--brand) 40%, #1a1f27),#1a1f27); }
+    .panel { background:var(--panel); border:1px solid #263042; border-radius:16px; padding:16px; display:none; }
+    .panel.active { display:block; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; }
+    .col { flex:1 1 260px; min-width:240px; }
+    .field { display:flex; flex-direction:column; gap:6px; }
+    .label { font-size:12px; color:var(--muted); }
+    input[type="text"], select, textarea { width:100%; background:#12161c; border:1px solid #2a3446; color:var(--text); padding:10px 12px; border-radius:10px; outline:none; font-size:14px; }
+    textarea { min-height:90px; resize:vertical; }
+    .actions { display:flex; align-items:center; gap:10px; }
+    .btn { appearance:none; border:1px solid #2a3446; background:#12161c; color:var(--text); padding:10px 14px; border-radius:10px; font-size:14px; cursor:pointer; transition:.2s; }
+    .btn:hover { border-color:#3a4a68; }
+    .btn.primary { border-color:var(--accent); background:linear-gradient(180deg,#0c213d,#0a1a30); }
+    .btn.brand { border-color:color-mix(in oklab,var(--brand) 40%, #2a3446); background:linear-gradient(180deg,color-mix(in oklab,var(--brand) 35%, #12161c),#12161c); color:#fff; }
+    .btn.ok { border-color:color-mix(in oklab,var(--ok) 40%, #2a3446); background:linear-gradient(180deg,color-mix(in oklab,var(--ok) 25%, #12161c),#12161c); }
+    .btn.ghost { background:transparent; }
+    .hint { font-size:12px; color:var(--muted); }
+    .result-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:12px 0 8px; }
+    .view-toggle { display:flex; gap:6px; }
+    .view-toggle .btn { padding:8px 12px; font-size:12px; }
+    .table { width:100%; border-collapse:collapse; }
+    .table th, .table td { padding:10px 8px; border-bottom:1px solid #273042; text-align:left; font-size:13px; }
+    .table th { color:var(--muted); font-weight:600; }
+    .list { display:flex; flex-direction:column; gap:8px; }
+    .card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; }
+    .card { background:#12161c; border:1px solid #2a3446; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+    .card .name { font-weight:600; font-size:14px; }
+    .card .meta { font-size:12px; color:var(--muted); display:flex; gap:8px; flex-wrap:wrap; }
+    .list-item { display:flex; align-items:center; gap:10px; padding:10px; background:#12161c; border:1px solid #2a3446; border-radius:12px; }
+    .list-item .meta { margin-left:auto; display:flex; gap:12px; font-size:12px; color:var(--muted); }
+    .stream { background:#0d1420; border:1px dashed #344055; border-radius:12px; padding:12px; min-height:80px; color:#b7c2cf; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; white-space:pre-wrap; }
+    .added { margin-top:16px; }
+    .added h3 { margin:0 0 8px; font-size:15px; }
+    .empty { color:var(--muted); font-size:13px; padding:8px 0; }
+    .footer { margin-top:10px; display:flex; gap:10px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title">智能评审系统 · 资料查询与添加</div>
+      <div class="badge">原型·仅前端交互</div>
+    </header>
+    <div class="tabs">
+      <button class="tab active" data-tab="classic">经典搜索</button>
+      <button class="tab ai" data-tab="ai">AI 智能搜索</button>
+    </div>
+
+    <section id="classic" class="panel active">
+      <div class="row">
+        <div class="col">
+          <div class="field">
+            <div class="label">关键词</div>
+            <input id="classic-keyword" type="text" placeholder="输入关键词">
+          </div>
+        </div>
+        <div class="col">
+          <div class="field">
+            <div class="label">类型</div>
+            <select id="classic-type">
+              <option value="">全部</option>
+              <option value="PDF">PDF</option>
+              <option value="DOCX">DOCX</option>
+              <option value="XLSX">XLSX</option>
+              <option value="PPTX">PPTX</option>
+            </select>
+          </div>
+        </div>
+        <div class="col">
+          <div class="field">
+            <div class="label">来源</div>
+            <select id="classic-source">
+              <option value="">全部</option>
+              <option value="内部库">内部库</option>
+              <option value="共享盘">共享盘</option>
+              <option value="外部资料">外部资料</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="actions" style="margin-top:12px;">
+        <button class="btn primary" id="classic-search">搜索</button>
+        <div class="hint">支持勾选后加入到当前评审</div>
+      </div>
+      <div class="result-toolbar">
+        <div class="actions">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input id="classic-select-all" type="checkbox"> 全选
+          </label>
+          <button class="btn ok" id="classic-add">加入</button>
+        </div>
+        <div class="view-toggle">
+          <button class="btn" id="classic-view-list">列表</button>
+          <button class="btn" id="classic-view-card">卡片</button>
+        </div>
+      </div>
+      <div id="classic-results"></div>
+    </section>
+
+    <section id="ai" class="panel">
+      <div class="field">
+        <div class="label">提示词</div>
+        <textarea id="ai-prompt" placeholder="描述需要的资料，例如：供应商合同、技术评审报告摘要等"></textarea>
+      </div>
+      <div class="actions" style="margin-top:12px;">
+        <button class="btn brand" id="ai-search">AI 智能搜索</button>
+        <div class="hint">点击后流式输出分析，然后返回可多选的结果</div>
+      </div>
+      <div id="ai-stream" class="stream" style="margin-top:12px; display:none;"></div>
+      <div class="result-toolbar" style="margin-top:12px;">
+        <div class="actions">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input id="ai-select-all" type="checkbox"> 全选
+          </label>
+          <button class="btn ok" id="ai-add">加入</button>
+        </div>
+        <div class="view-toggle">
+          <button class="btn" id="ai-view-list">列表</button>
+          <button class="btn" id="ai-view-card">卡片</button>
+        </div>
+      </div>
+      <div id="ai-results"></div>
+    </section>
+
+    <section id="added" class="panel added active">
+      <h3>已添加资料</h3>
+      <div id="added-list" class="list"></div>
+      <div class="footer">
+        <button class="btn ghost" id="added-clear">清空</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const DATA = [
+      { id: 'D-1001', name: '供应商框架合同_v3', type: 'PDF', size: '1.2MB', source: '内部库', date: '2025-11-07', score: 0.92 },
+      { id: 'D-1002', name: '技术评审报告_Alpha', type: 'DOCX', size: '860KB', source: '外部资料', date: '2025-12-15', score: 0.88 },
+      { id: 'D-1003', name: '风险评估清单模板', type: 'XLSX', size: '540KB', source: '共享盘', date: '2026-01-10', score: 0.81 },
+      { id: 'D-1004', name: '合规审查要点合集', type: 'PDF', size: '2.4MB', source: '内部库', date: '2025-10-03', score: 0.76 },
+      { id: 'D-1005', name: '项目评审会议纪要_2025Q4', type: 'DOCX', size: '420KB', source: '共享盘', date: '2025-12-22', score: 0.67 },
+      { id: 'D-1006', name: '预算审批流程图', type: 'PPTX', size: '3.1MB', source: '内部库', date: '2025-09-12', score: 0.72 },
+      { id: 'D-1007', name: '供应商尽调表单', type: 'XLSX', size: '600KB', source: '外部资料', date: '2026-02-05', score: 0.78 },
+      { id: 'D-1008', name: '技术方案比较_网络架构', type: 'PDF', size: '1.8MB', source: '共享盘', date: '2025-08-30', score: 0.83 },
+      { id: 'D-1009', name: '验收规范与标准', type: 'PDF', size: '2.0MB', source: '内部库', date: '2025-07-17', score: 0.74 },
+      { id: 'D-1010', name: '安全评审检查表', type: 'XLSX', size: '480KB', source: '内部库', date: '2026-01-28', score: 0.85 }
+    ];
+
+    const state = {
+      classicSelected: new Set(),
+      aiSelected: new Set(),
+      added: [],
+      classicView: 'list',
+      aiView: 'list'
+    };
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+    $$('.tab').forEach(b => {
+      b.addEventListener('click', () => {
+        $$('.tab').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        const tab = b.dataset.tab;
+        $$('.panel').forEach(p => p.classList.remove('active'));
+        $('#' + tab).classList.add('active');
+        $('#added').classList.add('active');
+      });
+    });
+
+    function renderAdded() {
+      const box = $('#added-list');
+      box.innerHTML = '';
+      if (!state.added.length) {
+        box.innerHTML = '<div class="empty">尚未添加任何资料</div>';
+        return;
+      }
+      state.added.forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'list-item';
+        el.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:${item.type==='PDF'?'#ef4444':item.type==='DOCX'?'#3b82f6':item.type==='XLSX'?'#22c55e':'#a78bfa'}"></div>
+            <div style="font-weight:600;">${item.name}</div>
+          </div>
+          <div class="meta">
+            <span>${item.type}</span>
+            <span>${item.size}</span>
+            <span>${item.source}</span>
+          </div>
+        `;
+        box.appendChild(el);
+      });
+    }
+
+    $('#added-clear').addEventListener('click', () => {
+      state.added = [];
+      renderAdded();
+    });
+
+    function renderList(container, data, selected, selectAllId) {
+      const box = $(container);
+      if (!data.length) {
+        box.innerHTML = '<div class="empty">无搜索结果</div>';
+        $(selectAllId).checked = false;
+        return;
+      }
+      const table = document.createElement('table');
+      table.className = 'table';
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th style="width:44px;"></th>
+            <th>文件名</th>
+            <th>类型</th>
+            <th>大小</th>
+            <th>来源</th>
+            <th>日期</th>
+          </tr>
+        </thead>
+      `;
+      const tbody = document.createElement('tbody');
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        const checked = selected.has(item.id) ? 'checked' : '';
+        tr.innerHTML = `
+          <td><input type="checkbox" data-id="${item.id}" ${checked}></td>
+          <td>${item.name}</td>
+          <td>${item.type}</td>
+          <td>${item.size}</td>
+          <td>${item.source}</td>
+          <td>${item.date}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      box.innerHTML = '';
+      box.appendChild(table);
+      const total = data.length;
+      const selectedCount = data.filter(x => selected.has(x.id)).length;
+      const selectAll = $(selectAllId);
+      selectAll.indeterminate = selectedCount>0 && selectedCount<total;
+      selectAll.checked = selectedCount===total && total>0;
+      box.querySelectorAll('input[type="checkbox"]').forEach(c => {
+        c.addEventListener('change', () => {
+          const id = c.dataset.id;
+          if (c.checked) selected.add(id); else selected.delete(id);
+          const selectedCount2 = data.filter(x => selected.has(x.id)).length;
+          selectAll.indeterminate = selectedCount2>0 && selectedCount2<total;
+          selectAll.checked = selectedCount2===total && total>0;
+        });
+      });
+    }
+
+    function renderCards(container, data, selected, selectAllId) {
+      const box = $(container);
+      if (!data.length) {
+        box.innerHTML = '<div class="empty">无搜索结果</div>';
+        $(selectAllId).checked = false;
+        return;
+      }
+      const grid = document.createElement('div');
+      grid.className = 'card-grid';
+      data.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const checked = selected.has(item.id) ? 'checked' : '';
+        card.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="name">${item.name}</div>
+            <input type="checkbox" data-id="${item.id}" ${checked}>
+          </div>
+          <div class="meta">
+            <span>${item.type}</span>
+            <span>${item.size}</span>
+            <span>${item.source}</span>
+            <span>${item.date}</span>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+      box.innerHTML = '';
+      box.appendChild(grid);
+      const total = data.length;
+      const selectedCount = data.filter(x => selected.has(x.id)).length;
+      const selectAll = $(selectAllId);
+      selectAll.indeterminate = selectedCount>0 && selectedCount<total;
+      selectAll.checked = selectedCount===total && total>0;
+      box.querySelectorAll('input[type="checkbox"]').forEach(c => {
+        c.addEventListener('change', () => {
+          const id = c.dataset.id;
+          if (c.checked) selected.add(id); else selected.delete(id);
+          const selectedCount2 = data.filter(x => selected.has(x.id)).length;
+          selectAll.indeterminate = selectedCount2>0 && selectedCount2<total;
+          selectAll.checked = selectedCount2===total && total>0;
+        });
+      });
+    }
+
+    function addSelected(selected) {
+      const ids = Array.from(selected);
+      const toAdd = DATA.filter(x => ids.includes(x.id));
+      const newIds = new Set(state.added.map(x => x.id));
+      toAdd.forEach(x => { if (!newIds.has(x.id)) state.added.push(x); });
+      selected.clear();
+      renderAdded();
+    }
+
+    function classicSearch() {
+      const keyword = $('#classic-keyword').value.trim().toLowerCase();
+      const type = $('#classic-type').value;
+      const source = $('#classic-source').value;
+      let result = DATA.slice();
+      if (keyword) result = result.filter(x => x.name.toLowerCase().includes(keyword));
+      if (type) result = result.filter(x => x.type===type);
+      if (source) result = result.filter(x => x.source===source);
+      const render = state.classicView==='list' ? renderList : renderCards;
+      render('#classic-results', result, state.classicSelected, '#classic-select-all');
+    }
+
+    $('#classic-search').addEventListener('click', classicSearch);
+    $('#classic-view-list').addEventListener('click', () => { state.classicView='list'; classicSearch(); });
+    $('#classic-view-card').addEventListener('click', () => { state.classicView='card'; classicSearch(); });
+    $('#classic-select-all').addEventListener('change', (e) => {
+      const container = $('#classic-results');
+      const items = container.querySelectorAll('input[type="checkbox"][data-id]');
+      if (e.target.checked) {
+        items.forEach(i => state.classicSelected.add(i.dataset.id));
+      } else {
+        items.forEach(i => state.classicSelected.delete(i.dataset.id));
+      }
+      const render = state.classicView==='list' ? renderList : renderCards;
+      const keyword = $('#classic-keyword').value.trim().toLowerCase();
+      const type = $('#classic-type').value;
+      const source = $('#classic-source').value;
+      let result = DATA.slice();
+      if (keyword) result = result.filter(x => x.name.toLowerCase().includes(keyword));
+      if (type) result = result.filter(x => x.type===type);
+      if (source) result = result.filter(x => x.source===source);
+      render('#classic-results', result, state.classicSelected, '#classic-select-all');
+    });
+    $('#classic-add').addEventListener('click', () => addSelected(state.classicSelected));
+
+    function aiStream(text, onDone) {
+      const box = $('#ai-stream');
+      box.style.display = 'block';
+      box.textContent = '';
+      const chunks = text.match(/.{1,10}/g) || [text];
+      let i = 0;
+      const timer = setInterval(() => {
+        box.textContent += chunks[i];
+        i++;
+        if (i>=chunks.length) {
+          clearInterval(timer);
+          onDone();
+        }
+      }, 60);
+    }
+
+    function aiSearch() {
+      const prompt = $('#ai-prompt').value.trim();
+      const btn = $('#ai-search');
+      if (!prompt) {
+        aiStream('正在分析提示词…', () => { renderAiResults(DATA.slice(0,6)); });
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = '正在搜索…';
+      const analysis = '理解需求：' + prompt + '\n提取关键线索，匹配相关资料…\n生成候选集合…\n完成。';
+      aiStream(analysis, () => {
+        const res = DATA.slice().sort((a,b)=>b.score-a.score).slice(0,7);
+        renderAiResults(res);
+        btn.disabled = false;
+        btn.textContent = 'AI 智能搜索';
+      });
+    }
+
+    function renderAiResults(result) {
+      const render = state.aiView==='list' ? renderList : renderCards;
+      render('#ai-results', result, state.aiSelected, '#ai-select-all');
+    }
+
+    $('#ai-search').addEventListener('click', aiSearch);
+    $('#ai-view-list').addEventListener('click', () => { state.aiView='list'; renderAiResults(DATA.slice(0,6)); });
+    $('#ai-view-card').addEventListener('click', () => { state.aiView='card'; renderAiResults(DATA.slice(0,6)); });
+    $('#ai-select-all').addEventListener('change', (e) => {
+      const container = $('#ai-results');
+      const items = container.querySelectorAll('input[type="checkbox"][data-id]');
+      if (e.target.checked) {
+        items.forEach(i => state.aiSelected.add(i.dataset.id));
+      } else {
+        items.forEach(i => state.aiSelected.delete(i.dataset.id));
+      }
+      renderAiResults(DATA.slice(0,6));
+    });
+    $('#ai-add').addEventListener('click', () => addSelected(state.aiSelected));
+
+    classicSearch();
+    renderAdded();
+  </script>
+</body>
+</html>
