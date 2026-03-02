@@ -52,6 +52,9 @@
     .added h3 { margin:0 0 8px; font-size:15px; }
     .empty { color:var(--muted); font-size:13px; padding:8px 0; }
     .footer { margin-top:10px; display:flex; gap:10px; }
+    .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    .chip { appearance:none; border:1px solid #2a3446; background:#0f141b; color:#cbd5e1; padding:8px 10px; border-radius:999px; font-size:12px; cursor:pointer; transition:.2s; }
+    .chip:hover { border-color:#3a4a68; color:#fff; }
   </style>
 </head>
 <body>
@@ -124,6 +127,15 @@
       <div class="actions" style="margin-top:12px;">
         <button class="btn brand" id="ai-search">AI 智能搜索</button>
         <div class="hint">点击后流式输出分析，然后返回可多选的结果</div>
+      </div>
+      <div class="chips" id="prompt-samples">
+        <button class="chip" data-text="检索：查找与“供应商合同”相关的PDF与DOCX，优先内部库，近一年。">检索型</button>
+        <button class="chip" data-text="筛选：技术评审报告，来源=共享盘，类型=DOCX，时间范围=2025-10至2026-02。">筛选型</button>
+        <button class="chip" data-text="摘要：提取“项目评审会议纪要”中的关键结论与风险项，返回原文链接。">摘要型</button>
+        <button class="chip" data-text="对比：对比网络架构技术方案A/B的差异与优缺点，返回相关资料。">对比型</button>
+        <button class="chip" data-text="时效：近90天新增的“合规审查”资料，类型不限，按相关度排序。">时效型</button>
+        <button class="chip" data-text="合规：与“安全评审检查表”匹配的模板与规范，优先内部库，提供下载。">合规型</button>
+        <button class="chip" data-text="模板：主题={供应商尽调} 类型={XLSX} 来源={外部资料|内部库} 时间={近半年} 输出={列表+摘要+评分} 排序={相关度降序}">模板型</button>
       </div>
       <div id="ai-stream" class="stream" style="margin-top:12px; display:none;"></div>
       <div class="result-toolbar" style="margin-top:12px;">
@@ -412,6 +424,13 @@
       renderAiResults(DATA.slice(0,6));
     });
     $('#ai-add').addEventListener('click', () => addSelected(state.aiSelected));
+    $$('#prompt-samples .chip').forEach(c => {
+      c.addEventListener('click', () => {
+        const t = c.getAttribute('data-text') || '';
+        $('#ai-prompt').value = t;
+        $('#ai-prompt').focus();
+      });
+    });
 
     classicSearch();
     renderAdded();
